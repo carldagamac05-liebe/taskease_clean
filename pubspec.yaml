@@ -1,0 +1,44 @@
+name: taskease
+description: Smart Task Manager with Notes
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  shared_preferences: ^2.2.2
+  sqflite: ^2.3.3
+  path_provider: ^2.1.2
+  path: ^1.9.0
+  http: ^1.2.0
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.2
+  table_calendar: ^3.1.0
+  intl: ^0.19.0
+  fl_chart: ^0.68.0
+  signature: ^5.5.0
+  image_picker: ^1.0.7
+  permission_handler: ^11.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+
+# App Icon Configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#6200EE"
+  adaptive_icon_foreground: "assets/icon/foreground.png"
+  remove_alpha_ios: true
