@@ -7,16 +7,26 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
+// ✅ Must be top-level - this runs in background even when app is killed
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    // Call the background service handler
+    await BackgroundService.handleBackgroundTask(task, inputData);
+    return Future.value(true);
+  });
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Workmanager for background tasks
+  // ✅ Initialize Workmanager
   await Workmanager().initialize(
     callbackDispatcher,
     isInDebugMode: false,
   );
 
-  // Register periodic task every hour
+  // ✅ Register periodic tasks - keeps app alive
   await Workmanager().registerPeriodicTask(
     "hourlyTaskCheck",
     "hourlyTaskCheck",
@@ -24,7 +34,6 @@ void main() async {
     existingWorkPolicy: ExistingWorkPolicy.keep,
   );
 
-  // Register user session check task (every 30 minutes)
   await Workmanager().registerPeriodicTask(
     "checkUserSession",
     "checkUserSession",
@@ -32,10 +41,14 @@ void main() async {
     existingWorkPolicy: ExistingWorkPolicy.keep,
   );
 
-  // Initialize notifications
-  await NotificationService.initialize();
+  await Workmanager().registerPeriodicTask(
+    "cleanupOldTasks",
+    "cleanupOldTasks",
+    frequency: const Duration(days: 1),
+    existingWorkPolicy: ExistingWorkPolicy.keep,
+  );
 
-  // Initialize theme service
+  await NotificationService.initialize();
   await ThemeService.init();
 
   runApp(const TaskEaseApp());
