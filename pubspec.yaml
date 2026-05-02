@@ -21,7 +21,7 @@ dependencies:
   signature: ^5.5.0
   image_picker: ^1.0.7
   permission_handler: ^11.0.0
-  workmanager: ^0.5.0
+  # workmanager: ^0.5.0   ← REMOVE THIS LINE
 
 dev_dependencies:
   flutter_test:
