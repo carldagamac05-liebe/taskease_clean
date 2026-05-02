@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
+import '../services/notification_service.dart';
+import '../services/background_service.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
@@ -48,17 +51,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _isLoading = true);
 
-    // Store user info
+    // Store user session
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_id', '1');
     await prefs.setString('user_name', _emailController.text.split('@')[0]);
     await prefs.setString('user_email', _emailController.text.trim());
+    await prefs.setBool('is_logged_in', true);
 
     if (_rememberMe) {
       await prefs.setString('saved_email', _emailController.text.trim());
       await prefs.setString('saved_password', _passwordController.text.trim());
       await prefs.setBool('remember_me', true);
     }
+
+    // Re-register background tasks after login
+    await Workmanager().registerPeriodicTask(
+      "hourlyTaskCheck",
+      "hourlyTaskCheck",
+      frequency: const Duration(hours: 1),
+      existingWorkPolicy: ExistingWorkPolicy.keep,
+    );
 
     setState(() => _isLoading = false);
 
@@ -80,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
             end: Alignment.bottomCenter,
             colors: [
               Theme.of(context).primaryColor,
-              Theme.of(context).primaryColor.withOpacity( 0.7),
+              Theme.of(context).primaryColor.withOpacity(0.7),
             ],
           ),
         ),
@@ -97,7 +109,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const Spacer(flex: 1),
-                          // Logo
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
@@ -124,11 +135,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             'Smart Task Manager',
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.white.withOpacity( 0.8),
+                              color: Colors.white.withOpacity(0.8),
                             ),
                           ),
                           const SizedBox(height: 30),
-                          // Login Card
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(

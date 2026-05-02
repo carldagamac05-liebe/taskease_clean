@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
 import 'services/notification_service.dart';
 import 'services/theme_service.dart';
+import 'services/background_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -9,7 +10,29 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize notifications (this will request permissions internally)
+  // Initialize Workmanager for background tasks
+  await Workmanager().initialize(
+    callbackDispatcher,
+    isInDebugMode: false,
+  );
+
+  // Register periodic task every hour
+  await Workmanager().registerPeriodicTask(
+    "hourlyTaskCheck",
+    "hourlyTaskCheck",
+    frequency: const Duration(hours: 1),
+    existingWorkPolicy: ExistingWorkPolicy.keep,
+  );
+
+  // Register user session check task (every 30 minutes)
+  await Workmanager().registerPeriodicTask(
+    "checkUserSession",
+    "checkUserSession",
+    frequency: const Duration(minutes: 30),
+    existingWorkPolicy: ExistingWorkPolicy.keep,
+  );
+
+  // Initialize notifications
   await NotificationService.initialize();
 
   // Initialize theme service

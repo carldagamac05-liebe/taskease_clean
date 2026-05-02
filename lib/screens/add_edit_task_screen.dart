@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/local_storage_service.dart';
+import '../services/notification_service.dart';
 import '../models/task.dart';
 
 class AddEditTaskScreen extends StatefulWidget {
-  const AddEditTaskScreen({super.key, this.task});
-
   final Task? task;
+  final DateTime? preselectedDate;
+
+  const AddEditTaskScreen({super.key, this.task, this.preselectedDate});
 
   @override
   State<AddEditTaskScreen> createState() => _AddEditTaskScreenState();
@@ -17,7 +19,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   String _priority = 'medium';
-  DateTime _dueDate = DateTime.now().add(const Duration(days: 1));
+  late DateTime _dueDate;
   TimeOfDay _dueTime = TimeOfDay.now();
   bool _hasTime = false;
   bool _isLoading = false;
@@ -31,6 +33,8 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Set due date from preselected date or existing task or default to tomorrow
     if (widget.task != null) {
       _titleController.text = widget.task!.title;
       _descriptionController.text = widget.task!.description;
@@ -40,6 +44,10 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         _dueTime = widget.task!.dueTime!;
         _hasTime = true;
       }
+    } else if (widget.preselectedDate != null) {
+      _dueDate = widget.preselectedDate!;
+    } else {
+      _dueDate = DateTime.now().add(const Duration(days: 1));
     }
   }
 
@@ -56,18 +64,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       initialDate: _dueDate,
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF6200EE),
-              onPrimary: Colors.white,
-              surface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
     if (date != null && mounted) {
       setState(() => _dueDate = date);
@@ -78,17 +74,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
     final time = await showTimePicker(
       context: context,
       initialTime: _dueTime,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF6200EE),
-              onPrimary: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
     if (time != null && mounted) {
       setState(() => _dueTime = time);
@@ -112,23 +97,25 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         'due_time': _hasTime ? '${_dueTime.hour}:${_dueTime.minute}' : null,
       };
 
+      int taskId;
       if (widget.task != null) {
         await storage.updateTask(widget.task!.id!, taskData);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Task updated!'), backgroundColor: Colors.green),
-          );
-        }
+        taskId = widget.task!.id!;
       } else {
-        await storage.insertTask(taskData);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Task created!'), backgroundColor: Colors.green),
-          );
-        }
+        taskId = await storage.insertTask(taskData);
       }
 
+      // Create task object and schedule notification
+      final savedTask = Task.fromMap({...taskData, 'id': taskId});
+      await NotificationService.scheduleTaskNotification(savedTask);
+
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.task != null ? 'Task updated!' : 'Task created!'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context, true);
       }
     } catch (e) {
@@ -138,9 +125,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -203,6 +188,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
             Row(
               children: _priorities.map((priority) {
                 final isSelected = _priority == priority['value'];
+                final priorityColor = priority['color'] as Color;
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(right: 8),
@@ -210,13 +196,13 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                       label: Text(
                         '${priority['icon']} ${priority['label']}',
                         style: TextStyle(
-                          color: isSelected ? Colors.white : (isDark ? Colors.white70 : priority['color']),
+                          color: isSelected ? Colors.white : (isDark ? Colors.white70 : priorityColor),
                         ),
                       ),
                       selected: isSelected,
-                      onSelected: (_) => setState(() => _priority = priority['value']),
+                      onSelected: (_) => setState(() => _priority = priority['value'] as String),
                       backgroundColor: isDark ? Colors.grey[800] : Colors.white,
-                      selectedColor: priority['color'],
+                      selectedColor: priorityColor,
                     ),
                   ),
                 );

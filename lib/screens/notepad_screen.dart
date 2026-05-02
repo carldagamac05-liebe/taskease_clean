@@ -54,15 +54,8 @@ class _NotepadScreenState extends State<NotepadScreen> {
         title: const Text('Delete Note'),
         content: Text('Delete "${note.title}"?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -139,8 +132,7 @@ class _NotepadScreenState extends State<NotepadScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      // FIXED: withOpacity -> withValues
-                      color: Colors.amber.withOpacity( isDark ? 0.2 : 0.1),
+                      color: Colors.amber.withOpacity(isDark ? 0.2 : 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(Icons.edit_note, color: isDark ? Colors.amber[300] : Colors.amber),
@@ -218,9 +210,13 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
   @override
   void initState() {
     super.initState();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Pen color adapts to theme: white for dark mode, black for light mode
     _signatureController = SignatureController(
       penStrokeWidth: 2,
-      penColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+      penColor: isDark ? Colors.white : Colors.black,
+      exportBackgroundColor: isDark ? Colors.grey[900] : Colors.white,
     );
 
     if (widget.note != null) {
@@ -230,6 +226,15 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
         _savedDrawing = base64Decode(widget.note!.drawingData!);
       }
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Update pen color when theme changes
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    _signatureController.penColor = isDark ? Colors.white : Colors.black;
+    _signatureController.exportBackgroundColor = isDark ? Colors.grey[900] : Colors.white;
   }
 
   @override
@@ -363,9 +368,8 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
               children: [
                 Icon(Icons.edit, size: 18, color: isDark ? Colors.white70 : Colors.black54),
                 const SizedBox(width: 8),
-                // FIXED: Changed 'Ballpen' to 'Sketch'
                 Text(
-                  'Drawing (Sketch Mode)',
+                  'Drawing Mode',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : Colors.black87,
@@ -399,7 +403,7 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
                   controller: _signatureController,
                   width: double.infinity,
                   height: 200,
-                  backgroundColor: isDark ? Colors.grey : Colors.white,
+                  backgroundColor: isDark ? Colors.grey[900] : Colors.white,
                 ),
               ),
               const SizedBox(height: 8),
@@ -409,7 +413,7 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
                   TextButton.icon(
                     onPressed: _clearDrawing,
                     icon: const Icon(Icons.clear),
-                    label: const Text('Clear Drawing'),
+                    label: Text('Clear Drawing', style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
                   ),
                 ],
               ),
@@ -426,7 +430,7 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Use your finger to draw. Switch off to save drawing.',
+                        'Draw with your finger. Pen color: ${isDark ? "White" : "Black"}',
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark ? Colors.white70 : Colors.black54,

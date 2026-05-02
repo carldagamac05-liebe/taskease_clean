@@ -1,8 +1,8 @@
-// screens/calendar_screen.dart
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../services/local_storage_service.dart';
+import '../services/notification_service.dart';
 import '../models/task.dart';
 import 'add_edit_task_screen.dart';
 
@@ -20,10 +20,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   List<Task> _selectedDateTasks = [];
   bool _isLoading = true;
 
-  DateTime _normalizeDate(DateTime date) {
-    return DateTime(date.year, date.month, date.day);
-  }
-
   @override
   void initState() {
     super.initState();
@@ -39,7 +35,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       final Map<DateTime, List<Task>> grouped = {};
       for (var task in allTasks) {
-        final normalizedDate = _normalizeDate(task.dueDate);
+        final normalizedDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
         if (!grouped.containsKey(normalizedDate)) {
           grouped[normalizedDate] = [];
         }
@@ -57,7 +53,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void _updateSelectedDateTasks() {
-    final normalizedSelectedDate = _normalizeDate(_selectedDay);
+    final normalizedSelectedDate = DateTime(_selectedDay.year, _selectedDay.month, _selectedDay.day);
     setState(() {
       _selectedDateTasks = _tasksByDate[normalizedSelectedDate] ?? [];
       _selectedDateTasks.sort((a, b) => a.dueDate.compareTo(b.dueDate));
@@ -72,26 +68,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  List<Task> _getEventsForDay(DateTime day) {
-    final normalizedDay = _normalizeDate(day);
-    return _tasksByDate[normalizedDay] ?? [];
-  }
-
-  // Get priority color for a task
+  // Get priority color for marker
   Color _getPriorityColor(String priority) {
     switch (priority) {
-      case 'high':
-        return Colors.red;
-      case 'medium':
-        return Colors.orange;
-      case 'low':
-        return Colors.green;
-      default:
-        return Colors.grey;
+      case 'high': return Colors.red;
+      case 'medium': return Colors.orange;
+      default: return Colors.green;
     }
   }
 
-  // Get multiple marker colors for a day (showing all priorities)
   List<Color> _getMarkerColors(List<Task> tasks) {
     Set<Color> colors = {};
     for (var task in tasks) {
@@ -100,19 +85,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return colors.toList();
   }
 
-  Future<void> _addTask() async {
+  Future<void> _addTaskWithPreselectedDate() async {
+    // Pass the selected date to AddEditTaskScreen
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const AddEditTaskScreen()),
+      MaterialPageRoute(
+        builder: (context) => AddEditTaskScreen(preselectedDate: _selectedDay),
+      ),
     );
     if (result == true) await _loadTasks();
-  }
-
-  Future<void> _toggleTaskStatus(Task task) async {
-    final newStatus = task.status == 'completed' ? 'pending' : 'completed';
-    final storage = await LocalStorageService.getInstance();
-    await storage.updateTask(task.id!, {'status': newStatus});
-    await _loadTasks();
   }
 
   @override
@@ -128,7 +109,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: _addTask,
+            onPressed: _addTaskWithPreselectedDate,
           ),
         ],
       ),
@@ -142,7 +123,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             focusedDay: _focusedDay,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             onDaySelected: _onDaySelected,
-            eventLoader: _getEventsForDay,
             calendarStyle: CalendarStyle(
               outsideDaysVisible: false,
               weekendTextStyle: TextStyle(
@@ -152,14 +132,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 color: isDark ? Colors.white : Colors.black87,
               ),
               todayDecoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity( 0.2),
+                color: Theme.of(context).primaryColor.withOpacity(0.2),
                 shape: BoxShape.circle,
               ),
               selectedDecoration: BoxDecoration(
                 color: Theme.of(context).primaryColor,
                 shape: BoxShape.circle,
               ),
-              markerSize: 8,
             ),
             headerStyle: HeaderStyle(
               titleCentered: true,
@@ -172,44 +151,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 Icons.chevron_right,
                 color: isDark ? Colors.white : Colors.black87,
               ),
-              titleTextStyle: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
             ),
             calendarBuilders: CalendarBuilders(
-              // Custom marker builder with priority colors
               markerBuilder: (context, date, events) {
                 if (events.isEmpty) return const SizedBox.shrink();
-
                 final tasks = events.cast<Task>();
                 final markerColors = _getMarkerColors(tasks);
 
-                // If only one task or all same priority, show single marker
-                if (markerColors.length == 1) {
-                  return Positioned(
-                    bottom: 2,
-                    child: Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: markerColors.first,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  );
-                }
-
-                // Show multiple markers for different priorities
                 return Positioned(
                   bottom: 2,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: markerColors.map((color) {
                       return Container(
-                        width: 5,
-                        height: 5,
+                        width: 6,
+                        height: 6,
                         margin: const EdgeInsets.symmetric(horizontal: 1),
                         decoration: BoxDecoration(
                           color: color,
@@ -239,7 +195,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity( 0.1),
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -260,23 +216,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.task_alt,
-                    size: 48,
-                    color: isDark ? Colors.grey[600] : Colors.grey[400],
-                  ),
+                  Icon(Icons.task_alt, size: 48, color: Colors.grey[400]),
                   const SizedBox(height: 12),
-                  Text(
-                    'No tasks for this day',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark ? Colors.white70 : Colors.grey[600],
-                    ),
-                  ),
+                  Text('No tasks for this day'),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
-                    onPressed: _addTask,
-                    icon: const Icon(Icons.add, size: 18),
+                    onPressed: _addTaskWithPreselectedDate,
+                    icon: const Icon(Icons.add),
                     label: const Text('Add Task'),
                   ),
                 ],
@@ -292,24 +238,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   color: Theme.of(context).cardColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
                     leading: GestureDetector(
-                      onTap: () => _toggleTaskStatus(task),
+                      onTap: () async {
+                        final newStatus = task.status == 'completed' ? 'pending' : 'completed';
+                        final storage = await LocalStorageService.getInstance();
+                        await storage.updateTask(task.id!, {'status': newStatus});
+                        await _loadTasks();
+                      },
                       child: Container(
                         width: 24,
                         height: 24,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: task.isCompleted
-                              ? _getPriorityColor(task.priority)
-                              : Colors.transparent,
+                          color: task.isCompleted ? _getPriorityColor(task.priority) : Colors.transparent,
                           border: Border.all(
-                            color: task.isCompleted
-                                ? _getPriorityColor(task.priority)
-                                : (isDark ? Colors.grey[600]! : Colors.grey[400]!),
+                            color: task.isCompleted ? _getPriorityColor(task.priority) : Colors.grey[400]!,
                             width: 2,
                           ),
                         ),
@@ -322,70 +267,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       task.title,
                       style: TextStyle(
                         decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                        color: task.isCompleted
-                            ? (isDark ? Colors.grey[600] : Colors.grey[500])
-                            : (isDark ? Colors.white : Colors.black87),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                        color: task.isCompleted ? Colors.grey[500] : Colors.black87,
                       ),
                     ),
                     subtitle: task.description.isNotEmpty
-                        ? Text(
-                      task.description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? Colors.white70 : Colors.grey[600],
-                      ),
-                    )
+                        ? Text(task.description, maxLines: 1, overflow: TextOverflow.ellipsis)
                         : null,
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Priority indicator
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: _getPriorityColor(task.priority),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (isOverdue)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.red.withOpacity( 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.warning, color: Colors.red, size: 16),
-                                SizedBox(width: 4),
-                                Text('Overdue', style: TextStyle(color: Colors.red, fontSize: 11)),
-                              ],
-                            ),
-                          )
-                        else if (task.dueTime != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isDark ? Colors.grey[800] : Colors.grey[100],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              task.getFormattedDueTime(),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: isDark ? Colors.white70 : Colors.grey[600],
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+                    trailing: isOverdue
+                        ? const Icon(Icons.warning, color: Colors.red)
+                        : null,
                   ),
                 );
               },
@@ -393,12 +283,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ],
       ),
-      floatingActionButton: _selectedDateTasks.isEmpty
-          ? FloatingActionButton(
-        onPressed: _addTask,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addTaskWithPreselectedDate,
         child: const Icon(Icons.add),
-      )
-          : null,
+      ),
     );
   }
 }
