@@ -132,7 +132,7 @@ class _NotepadScreenState extends State<NotepadScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(isDark ? 0.2 : 0.1),
+                      color: const Color(0xFFFFC107).withValues(alpha: isDark ? 0.2 : 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(Icons.edit_note, color: isDark ? Colors.amber[300] : Colors.amber),
@@ -210,14 +210,7 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
   @override
   void initState() {
     super.initState();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Pen color adapts to theme: white for dark mode, black for light mode
-    _signatureController = SignatureController(
-      penStrokeWidth: 2,
-      penColor: isDark ? Colors.white : Colors.black,
-      exportBackgroundColor: isDark ? Colors.grey[900] : Colors.white,
-    );
+    _initSignatureController();
 
     if (widget.note != null) {
       _titleController.text = widget.note!.title;
@@ -228,13 +221,21 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
     }
   }
 
+  void _initSignatureController() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    _signatureController = SignatureController(
+      penStrokeWidth: 2,
+      penColor: isDark ? Colors.white : Colors.black,
+      exportBackgroundColor: isDark ? Colors.grey[900] : Colors.white,
+    );
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Update pen color when theme changes
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    _signatureController.penColor = isDark ? Colors.white : Colors.black;
-    _signatureController.exportBackgroundColor = isDark ? Colors.grey[900] : Colors.white;
+    final oldController = _signatureController;
+    _initSignatureController();
+    oldController.dispose();
   }
 
   @override
@@ -403,7 +404,7 @@ class _NoteEditorScreenState extends State<_NoteEditorScreen> {
                   controller: _signatureController,
                   width: double.infinity,
                   height: 200,
-                  backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+                  backgroundColor: isDark ? Colors.grey.shade900 : Colors.white,
                 ),
               ),
               const SizedBox(height: 8),

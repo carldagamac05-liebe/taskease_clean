@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../services/local_storage_service.dart';
-import '../services/notification_service.dart';
 import '../models/task.dart';
 import 'add_edit_task_screen.dart';
 
@@ -68,7 +67,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     });
   }
 
-  // Get priority color for marker
   Color _getPriorityColor(String priority) {
     switch (priority) {
       case 'high': return Colors.red;
@@ -86,7 +84,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _addTaskWithPreselectedDate() async {
-    // Pass the selected date to AddEditTaskScreen
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -132,7 +129,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 color: isDark ? Colors.white : Colors.black87,
               ),
               todayDecoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.2),
+                color: Theme.of(context).primaryColor.withValues(alpha: 0.2),  // FIXED
                 shape: BoxShape.circle,
               ),
               selectedDecoration: BoxDecoration(
@@ -195,7 +192,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.1),  // FIXED
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(

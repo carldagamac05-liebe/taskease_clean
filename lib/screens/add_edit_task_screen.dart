@@ -34,7 +34,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   void initState() {
     super.initState();
 
-    // Set due date from preselected date or existing task or default to tomorrow
     if (widget.task != null) {
       _titleController.text = widget.task!.title;
       _descriptionController.text = widget.task!.description;
@@ -105,7 +104,6 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
         taskId = await storage.insertTask(taskData);
       }
 
-      // Create task object and schedule notification
       final savedTask = Task.fromMap({...taskData, 'id': taskId});
       await NotificationService.scheduleTaskNotification(savedTask);
 
@@ -230,7 +228,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
               ),
               value: _hasTime,
               onChanged: (value) => setState(() => _hasTime = value),
-              activeColor: Theme.of(context).primaryColor,
+              activeThumbColor: Theme.of(context).primaryColor,  // FIXED: changed from activeColor
               tileColor: isDark ? Colors.grey[800] : Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),

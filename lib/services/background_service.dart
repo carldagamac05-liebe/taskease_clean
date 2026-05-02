@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:workmanager/workmanager.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,7 +31,6 @@ Future<void> _checkUserSession() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('user_id');
 
-    // If no user is logged in, clear all scheduled notifications
     if (userId == null || userId.isEmpty) {
       await NotificationService.cancelAllNotifications();
       debugPrint("Background: No user logged in, cleared notifications");
@@ -47,7 +45,6 @@ Future<void> _checkUpcomingTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('user_id');
 
-    // Only proceed if user is logged in
     if (userId == null || userId.isEmpty) return;
 
     final storage = await LocalStorageService.getInstance();
@@ -61,7 +58,6 @@ Future<void> _checkUpcomingTasks() async {
       final dueDateTime = task.getDueDateTime();
       final minutesLeft = dueDateTime.difference(now).inMinutes;
 
-      // Schedule notifications for tasks that are approaching
       if (minutesLeft <= 60 && minutesLeft > 55 && !task.isCompleted) {
         await NotificationService.scheduleTaskNotification(task);
       }
@@ -73,14 +69,19 @@ Future<void> _checkUpcomingTasks() async {
 
 Future<void> _cleanupOldTasks() async {
   try {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getString('user_id');
+
+    if (userId == null || userId.isEmpty) return;
+
     final storage = await LocalStorageService.getInstance();
     final tasksData = await storage.getTasks();
     final tasks = tasksData.map((data) => Task.fromMap(data)).toList();
     final oneMonthAgo = DateTime.now().subtract(const Duration(days: 30));
 
     for (var task in tasks) {
-      // Delete completed tasks older than 30 days
-      if (task.isCompleted && task.updatedAt.isBefore(oneMonthAgo)) {
+      // Fixed: Use createdAt instead of updatedAt
+      if (task.isCompleted && task.createdAt.isBefore(oneMonthAgo)) {
         await storage.deleteTask(task.id!);
         debugPrint("Background: Cleaned up old task: ${task.title}");
       }
