@@ -8,10 +8,7 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize notifications
   await NotificationService.initialize();
-
-  // Initialize theme service
   await ThemeService.init();
 
   runApp(const TaskEaseApp());
