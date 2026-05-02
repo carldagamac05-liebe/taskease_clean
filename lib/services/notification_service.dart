@@ -29,6 +29,7 @@ class NotificationService {
     await _requestPermissions();
 
     _initialized = true;
+    print("✅ Notifications initialized");
   }
 
   static Future<void> _createNotificationChannels() async {
@@ -44,6 +45,7 @@ class NotificationService {
 
       await _notifications.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>()?.createNotificationChannel(taskChannel);
+      print("✅ Notification channel created");
     }
   }
 
@@ -51,6 +53,10 @@ class NotificationService {
     if (Platform.isAndroid) {
       await _notifications.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+
+      // Request exact alarm permission
+      await _notifications.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>()?.requestExactAlarmsPermission();
     }
     if (Platform.isIOS) {
       await _notifications.resolvePlatformSpecificImplementation<
@@ -60,20 +66,16 @@ class NotificationService {
         sound: true,
       );
     }
+    print("✅ Permissions requested");
   }
 
-  // Schedule exact notification for a task using zonedSchedule
   static Future<void> scheduleTaskNotification(Task task) async {
     if (task.status == 'completed') return;
-
-    // Cancel any existing notification
-    await _notifications.cancel(task.id!);
 
     final dueDateTime = task.getDueDateTime();
     final now = DateTime.now();
 
     if (dueDateTime.isAfter(now)) {
-      // Convert to TZDateTime
       final tz.TZDateTime scheduledTime = tz.TZDateTime.from(dueDateTime, tz.local);
 
       const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
@@ -86,10 +88,6 @@ class NotificationService {
       const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
       const NotificationDetails details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
-      // Use zonedSchedule instead of schedule
-      // In scheduleTaskNotification method, replace the schedule section:
-
-      // Use zonedSchedule instead of schedule
       await _notifications.zonedSchedule(
         task.id!,
         '📋 Task Reminder: ${task.title}',
@@ -100,12 +98,17 @@ class NotificationService {
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       );
 
-      debugPrint('✅ Scheduled notification for: ${task.title} at $dueDateTime');
+      print("✅ Notification scheduled for: ${task.title} at $dueDateTime");
+
+      // Send test notification
+      await sendTestNotification();
+    } else {
+      print("❌ Task due date is in the past: ${task.title}");
     }
   }
 
-  // Send immediate notification
-  static Future<void> sendImmediateNotification(int id, String title, String body) async {
+  // Test notification to verify everything works
+  static Future<void> sendTestNotification() async {
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'task_reminders',
       'Task Reminders',
@@ -115,53 +118,17 @@ class NotificationService {
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
     const NotificationDetails details = NotificationDetails(android: androidDetails, iOS: iosDetails);
 
-    await _notifications.show(id, title, body, details);
-  }
-
-  // Schedule periodic notification (e.g., daily reminder)
-  static Future<void> schedulePeriodicNotification(
-      int id,
-      String title,
-      String body,
-      TimeOfDay time,
-      ) async {
-    final now = DateTime.now();
-    final scheduledDate = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      time.hour,
-      time.minute,
-    );
-
-    final tz.TZDateTime scheduledTime = tz.TZDateTime.from(scheduledDate, tz.local);
-
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'daily_reminders',
-      'Daily Reminders',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
-    const NotificationDetails details = NotificationDetails(android: androidDetails, iOS: iosDetails);
-
-    await _notifications.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledTime,
+    await _notifications.show(
+      9999,
+      '🔔 Notification Test',
+      'Your notification system is working!',
       details,
-      androidAllowWhileIdle: true,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: DateTimeComponents.time, // This makes it repeat daily
     );
-  }
-
-  static Future<void> cancelTaskNotification(int taskId) async {
-    await _notifications.cancel(taskId);
+    print("✅ Test notification sent");
   }
 
   static Future<void> cancelAllNotifications() async {
     await _notifications.cancelAll();
+    print("✅ All notifications cancelled");
   }
 }
